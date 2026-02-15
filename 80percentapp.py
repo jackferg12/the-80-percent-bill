@@ -115,16 +115,14 @@ st.set_page_config(page_title="The 80% Bill", page_icon="🇺🇸", layout="wide
 st.markdown("""
 <style>
     /* 1. FORCE MAIN BACKGROUND */
-    .stApp { 
-        background-color: #F9F7F2; 
-    }
+    .stApp { background-color: #F9F7F2; }
     
     /* 2. FORCE TEXT COLORS (Global Override) */
     h1, h2, h3, h4, h5, h6, p, li, span, label, .stMarkdown { 
         color: #0C2340 !important; 
     }
 
-    /* 3. FIX INPUT BOXES (Force White Background / Black Text) */
+    /* 3. FIX INPUT BOXES */
     input[type="text"], input[type="email"], textarea {
         background-color: #ffffff !important; 
         color: #000000 !important; 
@@ -137,27 +135,25 @@ st.markdown("""
     }
     div[data-baseweb="select"] span { color: #000000 !important; }
 
-    /* 4. FIX BUTTONS (The "Nuclear" Option) */
-    div.stButton > button {
+    /* 4. FIX ALL BUTTONS (Universal Selector) */
+    /* We removed the '>' so this hits both Regular AND Form buttons */
+    div.stButton button {
         background-color: #0C2340 !important;
         border: none !important;
+        color: #ffffff !important;
     }
     
-    /* 4b. THIS IS THE FIX FOR THE BLUE TEXT */
-    /* Target the paragraph tag INSIDE the button */
-    div.stButton > button p {
-        color: #ffffff !important; 
-    }
-    /* Target the button text directly if it's not in a p tag */
-    div.stButton > button {
+    /* Force all internal text (p tags, spans, divs) to be white */
+    div.stButton button * {
         color: #ffffff !important;
     }
 
     /* Hover State */
-    div.stButton > button:hover {
+    div.stButton button:hover {
         background-color: #BF0A30 !important;
+        color: #ffffff !important;
     }
-    div.stButton > button:hover p {
+    div.stButton button:hover * {
         color: #ffffff !important;
     }
 
