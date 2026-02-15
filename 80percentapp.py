@@ -111,71 +111,97 @@ def save_pledge(name, email, district, rep_name):
 
 st.set_page_config(page_title="The 80% Bill", page_icon="🇺🇸", layout="wide")
 
-# --- CUSTOM THEME ---
+# --- CUSTOM THEME (FRESH START) ---
 st.markdown("""
 <style>
-    /* 1. FORCE MAIN BACKGROUND */
-    .stApp { background-color: #F9F7F2; }
-    
-    /* 2. FORCE TEXT COLORS (Global Override) */
-    h1, h2, h3, h4, h5, h6, p, li, span, label, .stMarkdown { 
-        color: #0C2340 !important; 
+    /* 1. FORCE LIGHT MODE BACKGROUND (Crucial for Mobile) */
+    [data-testid="stAppViewContainer"] {
+        background-color: #F9F7F2;
+    }
+    [data-testid="stHeader"] {
+        background-color: #F9F7F2; /* Hides the top bar */
     }
 
-    /* 3. FIX INPUT BOXES */
-    input[type="text"], input[type="email"], textarea {
-        background-color: #ffffff !important; 
-        color: #000000 !important; 
-        border: 1px solid #ccc !important;
+    /* 2. TEXT COLORS - Make everything Navy by default */
+    h1, h2, h3, h4, h5, h6, p, li, label, .stMarkdown {
+        color: #0C2340 !important;
     }
-    ::placeholder { color: #666666 !important; opacity: 1; }
-    div[data-baseweb="select"] > div {
+
+    /* 3. INPUT FIELDS - The "Reset" */
+    /* This forces all text boxes to be white with black text, ignoring phone settings */
+    input, textarea, select {
         background-color: #ffffff !important;
         color: #000000 !important;
+        border: 1px solid #ccc !important;
+        caret-color: #000000 !important; /* The typing cursor color */
     }
-    div[data-baseweb="select"] span { color: #000000 !important; }
+    /* The "Hint" text inside the box */
+    ::placeholder {
+        color: #666666 !important;
+        opacity: 1;
+    }
 
-    /* 4. FIX ALL BUTTONS (Universal Selector) */
-    /* We removed the '>' so this hits both Regular AND Form buttons */
-    div.stButton button {
+    /* 4. BUTTONS - Simple & High Contrast */
+    /* Target every single button in the app */
+    button {
         background-color: #0C2340 !important;
         border: none !important;
+        transition: background-color 0.3s ease;
+    }
+    /* Force ALL text inside buttons to be white */
+    button * {
         color: #ffffff !important;
     }
-    
-    /* Force all internal text (p tags, spans, divs) to be white */
-    div.stButton button * {
-        color: #ffffff !important;
-    }
-
-    /* Hover State */
-    div.stButton button:hover {
+    /* Hover effect */
+    button:hover {
         background-color: #BF0A30 !important;
-        color: #ffffff !important;
-    }
-    div.stButton button:hover * {
-        color: #ffffff !important;
     }
 
-    /* 5. TABS */
-    button[data-baseweb="tab"] { color: #0C2340 !important; }
-    button[data-baseweb="tab"][aria-selected="true"] {
-        color: #BF0A30 !important;
-        border-bottom-color: #BF0A30 !important;
+    /* 5. TABS - High Visibility */
+    /* The bar under the tabs */
+    [data-testid="stTabs"] {
+        background-color: transparent;
+    }
+    /* The text inside the tabs */
+    [data-testid="stMarkdownContainer"] p {
+        font-weight: bold;
     }
 
-    /* 6. ARTICLE BOX STYLING */
+    /* 6. ARTICLE BOXES (The Bill text) */
     .article-box {
-        background-color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;
-        border-left: 6px solid #0C2340; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        background-color: #ffffff; 
+        padding: 20px; 
+        border-radius: 8px; 
+        margin-bottom: 20px;
+        border-left: 6px solid #0C2340; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    .article-title { font-weight: 800; color: #0C2340; font-size: 20px; margin-bottom: 5px; }
-    .article-desc { color: #333; font-size: 16px; margin-bottom: 12px; }
-    
-    .bill-link { 
-        text-decoration: none; color: white !important; font-weight: bold; font-size: 14px;
-        background-color: #BF0A30; padding: 8px 16px; border-radius: 5px; display: inline-block;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.2s;
+    .article-title { 
+        color: #0C2340 !important; 
+        font-size: 20px; 
+        font-weight: 800; 
+    }
+    .article-desc { 
+        color: #333333 !important; 
+        font-size: 16px; 
+    }
+    .note-text {
+        color: #555555 !important;
+        background-color: #eeeeee;
+        padding: 8px;
+        font-style: italic;
+        border-radius: 4px;
+    }
+
+    /* 7. LINKS */
+    a.bill-link {
+        color: #ffffff !important;
+        background-color: #BF0A30;
+        padding: 8px 16px;
+        border-radius: 4px;
+        text-decoration: none;
+        display: inline-block;
+        margin-top: 10px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -283,100 +309,111 @@ with tab2:
 with tab3:
     st.markdown("# Every single article below is supported by at least 80% of American voters.")
     
-# --- CUSTOM THEME (FRESH START) ---
-st.markdown("""
-<style>
-    /* 1. FORCE LIGHT MODE BACKGROUND (Crucial for Mobile) */
-    [data-testid="stAppViewContainer"] {
-        background-color: #F9F7F2;
-    }
-    [data-testid="stHeader"] {
-        background-color: #F9F7F2; /* Hides the top bar */
-    }
+# FORMAT: (Title, Description, Link, Optional_Note)
+    articles = [
 
-    /* 2. TEXT COLORS - Make everything Navy by default */
-    h1, h2, h3, h4, h5, h6, p, li, label, .stMarkdown {
-        color: #0C2340 !important;
-    }
+        (
+            "I. Ban Congressional Stock Trading", 
+            "Prohibits Members, their spouses, and dependent children from owning or trading individual stocks. Requires full divestment or a qualified blind trust.", 
+            "https://www.congress.gov/bill/118th-congress/senate-bill/1171", 
+            "Note: We selected the ETHICS Act (S. 1171) because it is the 'strongest' version, explicitly closing the 'spouse loophole' and banning ownership entirely."
+        ),
+        ("II. End Forever Wars", "Repeal outdated authorizations (AUMFs) to return war powers to Congress.", "https://www.congress.gov/bill/118th-congress/senate-bill/316", None),
+        ("III. Lifetime Lobbying Ban", "Former Members of Congress are banned for life from becoming registered lobbyists.", "https://www.congress.gov/bill/118th-congress/house-bill/384", None),
+        ("IV. Tax the Ultra-Wealthy", "Close tax loopholes and establish a minimum tax for billionaires.", "https://www.congress.gov/bill/118th-congress/house-bill/6498", None),
+        (
+            "V. Ban Corporate PACs", 
+            "Prohibit for-profit corporations from forming Political Action Committees.", 
+            "https://www.congress.gov/bill/118th-congress/house-bill/4799", 
+            "Note: This legislation includes a 'severability clause.' If the Supreme Court strikes down this specific ban, the rest of the 80% Bill remains law."
+        ),
+        ("VI. Audit the Pentagon", "The Pentagon has never passed an audit. Require a full, independent audit to root out waste and fraud.", "https://www.congress.gov/bill/118th-congress/house-bill/2961", None),
+        (
+            "VII. Medicare Drug Negotiation", 
+            "1. H.R. 4895: Expands negotiation to 50 drugs/year and applies lower prices to private insurance.\n2. H.R. 853: Closes the 'Orphan Drug' loophole.", 
+            "https://www.congress.gov/bill/118th-congress/house-bill/4895", 
+            "Note: This entry combines two bills to protect ALL Americans (not just seniors) and stop pharma from gaming the 'rare disease' system."
+        ),
+        (
+            "VIII. Fair Elections & End Gerrymandering", 
+            "Pass the 'Freedom to Vote Act' to ban partisan gerrymandering and the 'John Lewis Act' to restore the Voting Rights Act.", 
+            "https://www.congress.gov/bill/117th-congress/house-bill/5746", 
+            "Note: These bills ban politicians from picking their voters (gerrymandering) and protect every eligible voter from suppression."
+        ),
+        (
+            "IX. Protect US Farmland", 
+            "Ban foreign ADVERSARY governments from buying strategic farmland. Includes a 'Beneficial Ownership' registry to stop shell companies.", 
+            "https://www.congress.gov/bill/118th-congress/senate-bill/618", 
+            "Note: Strictly targets governments (China, Russia, Iran, NK). Explicitly protects lawful US permanent residents (Green Card holders)."
+        ),
 
-    /* 3. INPUT FIELDS - The "Reset" */
-    /* This forces all text boxes to be white with black text, ignoring phone settings */
-    input, textarea, select {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        border: 1px solid #ccc !important;
-        caret-color: #000000 !important; /* The typing cursor color */
-    }
-    /* The "Hint" text inside the box */
-    ::placeholder {
-        color: #666666 !important;
-        opacity: 1;
-    }
-
-    /* 4. BUTTONS - Simple & High Contrast */
-    /* Target every single button in the app */
-    button {
-        background-color: #0C2340 !important;
-        border: none !important;
-        transition: background-color 0.3s ease;
-    }
-    /* Force ALL text inside buttons to be white */
-    button * {
-        color: #ffffff !important;
-    }
-    /* Hover effect */
-    button:hover {
-        background-color: #BF0A30 !important;
-    }
-
-    /* 5. TABS - High Visibility */
-    /* The bar under the tabs */
-    [data-testid="stTabs"] {
-        background-color: transparent;
-    }
-    /* The text inside the tabs */
-    [data-testid="stMarkdownContainer"] p {
-        font-weight: bold;
-    }
-
-    /* 6. ARTICLE BOXES (The Bill text) */
-    .article-box {
-        background-color: #ffffff; 
-        padding: 20px; 
-        border-radius: 8px; 
-        margin-bottom: 20px;
-        border-left: 6px solid #0C2340; 
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .article-title { 
-        color: #0C2340 !important; 
-        font-size: 20px; 
-        font-weight: 800; 
-    }
-    .article-desc { 
-        color: #333333 !important; 
-        font-size: 16px; 
-    }
-    .note-text {
-        color: #555555 !important;
-        background-color: #eeeeee;
-        padding: 8px;
-        font-style: italic;
-        border-radius: 4px;
-    }
-
-    /* 7. LINKS */
-    a.bill-link {
-        color: #ffffff !important;
-        background-color: #BF0A30;
-        padding: 8px 16px;
-        border-radius: 4px;
-        text-decoration: none;
-        display: inline-block;
-        margin-top: 10px;
-    }
-</style>
-""", unsafe_allow_html=True)
+        (
+            "X. Ban Corporate Purchase of Single Family Homes", 
+            "Imposes a massive tax penalty on corporations buying *existing* homes, making it unprofitable. Explicitly allows them to *build* new rental homes to increase supply.", 
+            "https://www.congress.gov/bill/118th-congress/senate-bill/3402", 
+            "Note: This uses an excise tax (not a ban) to bypass the 'Takings Clause' and forces hedge funds to sell existing homes over 10 years."
+        ),
+        (
+            "XI. Fund Social Security", 
+            "Lifts the cap on wages AND taxes investment income (Capital Gains) for earners over $400k. Prevents billionaires from dodging the tax by taking 'stock' instead of 'salary'.", 
+            "https://www.congress.gov/bill/118th-congress/senate-bill/1174", 
+            None
+        ),
+        (
+            "XII. Police Body Cameras", 
+            "Mandates cameras for federal officers and cuts funding to states that don't comply. Includes a 'Presumption of Release' clause so police can't hide footage.", 
+            "https://www.congress.gov/bill/117th-congress/house-bill/1280", 
+            None
+        ),
+        (
+            "XIII. Ban 'Dark Money' (Overturn Citizens United)", 
+            "A provision to overturn *Citizens United* and ban corporate dark money. Requires a 2/3rds vote to survive the Supreme Court.", 
+            "https://www.congress.gov/bill/118th-congress/senate-joint-resolution/4", 
+            "Severability Note: This clause overturns *Citizens United*, but we acknowledge it will be struck down by the Court unless this bill passes with the votes required to amend the Constitution (2/3rds)."
+        ),
+        (
+            "XIV. Paid Family Leave", 
+            "Guarantees 12 weeks of paid leave funded by a payroll insurance fund. Explicitly prohibits firing workers (of any company size) for taking this leave.", 
+            "https://www.congress.gov/bill/118th-congress/house-bill/3481", 
+            None
+        ),
+        (
+            "XV. Release the Epstein Files", 
+            "Mandates the release of all documents. Explicitly bans redactions of perpetrator names while strictly protecting the identities of underage victims.", 
+            "https://www.congress.gov/bill/118th-congress/senate-bill/2557", 
+            "Note: We endorse the version that strips 'Privacy' protections for anyone accused of a crime, closing the loophole for powerful figures."
+        ),
+        (
+            "XVI. Veterans Care Choice", 
+            "Codifies the right to private care but mandates strict network adequacy standards so doctors actually accept the coverage. Cuts the red tape on 'Pre-Authorization'.", 
+            "https://www.congress.gov/bill/118th-congress/house-bill/8371", 
+            None
+        ),
+        (
+            "XVII. The DISCLOSE Act", 
+            "Requires immediate disclosure of donors ($10k+) and includes 'Trace-Back' rules to follow money through shell companies to the original source.", 
+            "https://www.congress.gov/bill/118th-congress/senate-bill/512", 
+            None
+        ),
+        (
+            "XVIII. Close Tax Loopholes", 
+            "Reclassifies 'Carried Interest' as ordinary income, regardless of holding period. Ensures hedge fund managers pay the same tax rate as nurses and teachers.", 
+            "https://www.congress.gov/bill/118th-congress/house-bill/1068", 
+            None
+        ),
+        (
+            "XIX. Right to Repair (Ban 'Parts Pairing')", 
+            "Guarantees access to parts/manuals for cars AND electronics. Explicitly bans 'software pairing' that blocks genuine 3rd-party repairs.", 
+            "https://www.congress.gov/bill/118th-congress/house-bill/906", 
+            "Note: This entry combines the automotive 'REPAIR Act' (H.R. 906) with the 'Fair Repair Act' standards to stop companies from using software to kill independent repair."
+        ),
+        (
+            "XX. Ban Junk Fees", 
+            "Requires 'all-in' price disclosure for travel, tickets, and utilities. Prohibits companies from raising the price (dynamic pricing) once it is shown to the consumer.", 
+            "https://www.congress.gov/bill/118th-congress/house-bill/2463", 
+            None
+        )
+    ]
 
     for title, desc, link, note in articles:
         note_html = f"<div class='note-text'>{note}</div>" if note else ""
