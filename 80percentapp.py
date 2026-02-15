@@ -94,7 +94,7 @@ def send_email_code(to_email):
             server.sendmail(EMAIL_ADDRESS, to_email, msg.as_string())
         return code
     except Exception as e:
-        st.error(f"❌ Email Failed: {e}")
+        st.error(f"Email Failed: {e}")
         return None
 
 def save_pledge(name, email, district, rep_name):
@@ -214,7 +214,7 @@ with st.sidebar:
     st.header("Support the Project")
     st.link_button("☕ Buy me a Coffee ($5)", DONATION_LINK)
     st.divider()
-    with st.expander("🕵️‍♂️ Admin"):
+    with st.expander("Admin"):
         if os.path.isfile('pledges.csv'):
             if st.button("⚠️ Reset Database"):
                 os.remove('pledges.csv')
@@ -254,7 +254,7 @@ with tab1:
 
         elif st.session_state.step == 2:
             dist, rep = st.session_state.district_info
-            st.success(f"📍 You are in **{dist}** represented by **{rep}**.")
+            st.success(f"You are in **{dist}** represented by **{rep}**.")
             with st.form("contact_form"):
                 st.subheader("Step 2: Verify & Sign")
                 name = st.text_input("Full Name")
@@ -285,15 +285,15 @@ with tab1:
                     else:
                         save_pledge(name, email, dist, rep)
                         st.balloons()
-                        st.success("✅ PLEDGE CONFIRMED!")
-                        st.link_button("❤️ Donate $5", DONATION_LINK)
+                        st.success("✅ NAME CONFIRMED!")
+                        st.link_button("❤️ Donate $5 to help spread the word", DONATION_LINK)
                         if st.button("Start Over"):
                             st.session_state.clear()
                             st.rerun()
                 else: st.error("Incorrect code.")
 
 with tab2:
-    st.header("📊 Campaign Progress")
+    st.header("Campaign Progress")
     if os.path.isfile('pledges.csv'):
         df = pd.read_csv('pledges.csv')
         if not df.empty:
