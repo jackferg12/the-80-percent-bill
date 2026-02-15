@@ -221,10 +221,10 @@ with st.sidebar:
                 st.rerun()
 
 # --- MAIN PAGE ---
-st.title("🏛️ The 80% Bill")
+st.title("The 80% Bill")
 
 st.markdown(" ")
-tab1, tab2, tab3 = st.tabs(["✍️ Sign the Pledge", "📊 Live Dashboard", "📜 Read the Bill"])
+tab1, tab2, tab3 = st.tabs(["Add Your Name", "Live Dashboard", "Read the Bill"])
 
 with tab1:
     if 'step' not in st.session_state: st.session_state.step = 1
