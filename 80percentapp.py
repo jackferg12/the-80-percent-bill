@@ -228,6 +228,10 @@ tab1, tab2, tab3 = st.tabs(["Add Your Name", "Live Dashboard", "Read the Bill"])
 
 with tab1:
     if 'step' not in st.session_state: st.session_state.step = 1
+
+    # --- PLEDGE DISCLAIMER ---
+    st.warning("By completing this form I am stating that I will not vote for anyone who does not actively support this bill.")
+    
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if st.session_state.step == 1:
@@ -260,7 +264,7 @@ with tab1:
                 name = st.text_input("Full Name")
                 email_input = st.text_input("Email Address")
                 st.caption("We will email a 4-digit code to this address.")
-                if st.form_submit_button("Send Code"):
+                if st.form_submit_button("I will not vote for anyone who does not support this bill, unaltered"):
                     if name and email_input and "@" in email_input:
                         clean_email = email_input.strip().lower()
                         if is_duplicate(clean_email): st.error(f"❌ '{clean_email}' has already signed.")
