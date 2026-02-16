@@ -322,7 +322,7 @@ with tab2:
         (
             "I. Ban Congressional Stock Trading", 
             "Prohibits Members, their spouses, and dependent children from owning or trading individual stocks. Requires full divestment or a qualified blind trust.", 
-            "https://www.congress.gov/bill/118th-congress/senate-bill/1171", 
+            "https://www.congress.gov/bill/118th-congress/senate-bill/1171", None
         ),
         ("II. End Forever Wars", "Repeal outdated authorizations (AUMFs) to return war powers to Congress.", "https://www.congress.gov/bill/118th-congress/senate-bill/316", None),
         ("III. Lifetime Lobbying Ban", "Former Members of Congress are banned for life from becoming registered lobbyists.", "https://www.congress.gov/bill/118th-congress/house-bill/384", None),
@@ -338,24 +338,24 @@ with tab2:
             "VII. Medicare Drug Negotiation", 
             "1. H.R. 4895: Expands negotiation to 50 drugs/year and applies lower prices to private insurance.\n2. H.R. 853: Closes the 'Orphan Drug' loophole.", 
             "https://www.congress.gov/bill/118th-congress/house-bill/4895", 
-            "Note: This entry combines two bills to protect all Americans (not just seniors) and stop Big Pharma from gaming the 'rare disease' system."
+            "Note: This entry combines two bills to protect all Americans (not just seniors) and stop Big Pharma from gaming the 'rare disease' system.", None
         ),
         (
             "VIII. Fair Elections & End Gerrymandering", 
             "Pass the 'Freedom to Vote Act' to ban partisan gerrymandering and the 'John Lewis Act' to restore the Voting Rights Act.", 
-            "https://www.congress.gov/bill/117th-congress/house-bill/5746", 
+            "https://www.congress.gov/bill/117th-congress/house-bill/5746", None
         ),
         (
             "IX. Protect US Farmland", 
             "Ban adversarial foreign governments from buying American farmland. Includes a 'Beneficial Ownership' registry to stop shell companies.", 
-            "https://www.congress.gov/bill/118th-congress/senate-bill/618",
+            "https://www.congress.gov/bill/118th-congress/senate-bill/618", None
         ),
 
         (
             "X. Ban Corporate Purchase of Single Family Homes", 
             "Imposes a massive tax penalty on corporations buying *existing* homes, making it unprofitable. Explicitly allows them to *build* new rental homes to increase supply.", 
             "https://www.congress.gov/bill/118th-congress/senate-bill/3402", 
-            "Note: This uses an excise tax (not a ban) to bypass the 'Takings Clause' and forces hedge funds to sell existing homes over 10 years."
+            "Note: This uses an excise tax (not a ban) to bypass the 'Takings Clause' and forces hedge funds to sell existing homes over 10 years.", None
         ),
         (
             "XI. Fund Social Security", 
@@ -373,7 +373,7 @@ with tab2:
             "XIII. Ban 'Dark Money' (Overturn Citizens United)", 
             "A provision to overturn *Citizens United* and ban corporate dark money. Requires a 2/3rds vote to survive the Supreme Court.", 
             "https://www.congress.gov/bill/118th-congress/senate-joint-resolution/4", 
-            "Severability Note: This clause overturns Citizens United, but we acknowledge it will be struck down by the Court unless this bill passes with the votes required to amend the Constitution (2/3rds)."
+            "Severability Note: This clause overturns Citizens United, but we acknowledge it will be struck down by the Court unless this bill passes with the votes required to amend the Constitution (2/3rds).", None
         ),
         (
             "XIV. Paid Family Leave", 
@@ -408,7 +408,8 @@ with tab2:
             "XIX. Right to Repair (Ban 'Parts Pairing')", 
             "Guarantees access to parts/manuals for cars AND electronics. Explicitly bans 'software pairing' that blocks genuine 3rd-party repairs.", 
             "https://www.congress.gov/bill/118th-congress/house-bill/906", 
-            "Note: This entry combines the automotive 'REPAIR Act' (H.R. 906) with the 'Fair Repair Act' standards to stop companies from using software to kill independent repair."
+            "Note: This entry combines the automotive 'REPAIR Act' (H.R. 906) with the 'Fair Repair Act' standards to stop companies from using software to kill independent repair.",
+            None
         ),
         (
             "XX. Ban Junk Fees", 
