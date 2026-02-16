@@ -9,4 +9,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping App
-        run: curl -I https://the-80-percent-bill.streamlit.app
+        run: curl https://the-80-percent-bill.streamlit.app
