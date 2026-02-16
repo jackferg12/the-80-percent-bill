@@ -1,0 +1,12 @@
+name: Keep App Alive
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping App
+        run: curl -I https://the-80-percent-bill.streamlit.app
