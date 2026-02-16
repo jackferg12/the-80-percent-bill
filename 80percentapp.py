@@ -221,10 +221,13 @@ with st.sidebar:
                 st.rerun()
 
 # --- MAIN PAGE ---
+
+
 st.title("The 80% Bill")
 
 st.markdown(" ")
-tab1, tab2, tab3 = st.tabs(["Add Your Name", "Live Dashboard", "Read the Bill"])
+# tab1, tab2, tab3 = st.tabs(["Add Your Name", "Live Dashboard", "Read the Bill"]) !!!for live dashboard
+tab1, tab2 = st.tabs(["Add Your Name", "Read the Bill"])
 
 with tab1:
     if 'step' not in st.session_state: st.session_state.step = 1
@@ -296,21 +299,21 @@ with tab1:
                             st.rerun()
                 else: st.error("Incorrect code.")
 
-with tab2:
-    st.header("Campaign Progress")
-    if os.path.isfile('pledges.csv'):
-        df = pd.read_csv('pledges.csv')
-        if not df.empty:
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Total Signatures", len(df))
-            c2.metric("Districts Active", df['District'].nunique())
-            st.divider()
-            st.bar_chart(df['District'].value_counts())
-            st.dataframe(df[['Name', 'District', 'Rep']].tail(5), use_container_width=True)
-        else: st.info("No signatures yet.")
-    else: st.info("No signatures yet.")
+# with tab2:
+#     st.header("Campaign Progress")
+#     if os.path.isfile('pledges.csv'):
+#         df = pd.read_csv('pledges.csv')
+#         if not df.empty:
+#             c1, c2, c3 = st.columns(3)
+#             c1.metric("Total Signatures", len(df))
+#             c2.metric("Districts Active", df['District'].nunique())
+#             st.divider()
+#             st.bar_chart(df['District'].value_counts())
+#             st.dataframe(df[['Name', 'District', 'Rep']].tail(5), use_container_width=True)
+#         else: st.info("No signatures yet.")
+#     else: st.info("No signatures yet.")
 
-with tab3:
+with tab2:
     st.markdown("# Every single article below is supported by at least 80% of American voters.")
     
 # FORMAT: (Title, Description, Link, Optional_Note)
