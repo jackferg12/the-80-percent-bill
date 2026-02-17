@@ -70,16 +70,16 @@ def get_district(address):
     return None, None
 
 def is_duplicate(email):
-    filename = 'pledges.csv'
-    if not os.path.isfile(filename): return False
-    clean_input = email.strip().lower()
     try:
-        df = pd.read_csv(filename)
-        if 'Email' in df.columns:
-            existing_emails = df['Email'].astype(str).str.strip().str.lower().values
-            if clean_input in existing_emails: return True
-        else: return False
-    except: return False
+        conn = st.connection("gsheets", type=GSheetsConnection)
+        # Read the sheet with specific columns to be faster
+        df = conn.read(worksheet="Sheet1", usecols=[2], ttl=0) # Column 2 is Email (0-index)
+        if df is not None and not df.empty:
+            # Check if email exists (case insensitive)
+            existing_emails = df.iloc[:, 0].astype(str).str.strip().str.lower().values
+            return email.strip().lower() in existing_emails
+    except Exception:
+        return False
     return False
 
 def send_email_code(to_email):
@@ -98,14 +98,26 @@ def send_email_code(to_email):
         return None
 
 def save_pledge(name, email, district, rep_name):
-    filename = 'pledges.csv'
-    file_exists = os.path.isfile(filename)
-    clean_email = email.strip().lower()
-    with open(filename, 'a', newline='') as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(['Timestamp', 'Name', 'Email', 'District', 'Rep'])
-        writer.writerow([datetime.now(), name, clean_email, district, rep_name])
+    try:
+        conn = st.connection("gsheets", type=GSheetsConnection)
+        # 1. Read existing data
+        existing_data = conn.read(worksheet="Sheet1", ttl=0)
+        
+        # 2. Create new row
+        new_row = pd.DataFrame([{
+            "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Name": name,
+            "Email": email,
+            "District": district,
+            "Rep": rep_name
+        }])
+        
+        # 3. Combine and Update
+        updated_df = pd.concat([existing_data, new_row], ignore_index=True)
+        conn.update(worksheet="Sheet1", data=updated_df)
+        
+    except Exception as e:
+        st.error(f"Error saving to cloud: {e}")
 
 # --- THE APP UI ---
 
