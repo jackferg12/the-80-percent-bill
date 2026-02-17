@@ -348,7 +348,7 @@ with tab2:
         (
             "IX. Protect US Farmland", 
             "Ban adversarial foreign governments from buying American farmland. Includes a 'Beneficial Ownership' registry to stop shell companies.", 
-            "https://www.congress.gov/bill/118th-congress/senate-bill/618", None
+            "https://www.congress.gov/bill/118th-congress/senate-bill/926", None
         ),
 
         (
