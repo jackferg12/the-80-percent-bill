@@ -330,7 +330,7 @@ with tab2:
         (
             "V. Ban Corporate PACs", 
             "Prohibit for-profit corporations from forming Political Action Committees.", 
-            "https://www.congress.gov/bill/118th-congress/house-bill/4799", 
+            "https://www.congress.gov/bill/118th-congress/house-bill/5941", 
             "Note: This legislation includes a 'severability clause.' If the Supreme Court strikes down this specific ban, the rest of the 80% Bill remains law."
         ),
         ("VI. Audit the Pentagon", "The Pentagon has never passed an audit. Require a full, independent audit to root out waste and fraud.", "https://www.congress.gov/bill/118th-congress/house-bill/2961", None),
