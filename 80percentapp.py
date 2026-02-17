@@ -95,12 +95,11 @@ def send_email_code(to_email):
         return None
 
 def save_pledge(name, email, district, rep_name):
+    # SAVES DIRECTLY TO GOOGLE SHEETS
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
-        # Force a fresh download of the data (ttl=0)
         existing_data = conn.read(worksheet="Sheet1", ttl=0)
         
-        # Create the new row
         new_row = pd.DataFrame([{
             "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "Name": name,
@@ -109,36 +108,86 @@ def save_pledge(name, email, district, rep_name):
             "Rep": rep_name
         }])
         
-        # Combine old + new
         updated_df = pd.concat([existing_data, new_row], ignore_index=True)
-        
-        # Upload
         conn.update(worksheet="Sheet1", data=updated_df)
-        return True  # <--- REPORT SUCCESS
-        
     except Exception as e:
-        st.error(f"⚠️ GOOGLE SHEETS ERROR: {e}")
-        return False # <--- REPORT FAILURE
+        st.error(f"Error saving to cloud: {e}")
 
 # --- THE APP UI ---
 
 st.set_page_config(page_title="The 80% Bill", page_icon="🇺🇸", layout="wide")
 
+# --- CUSTOM THEME (FRESH START) ---
 st.markdown("""
 <style>
-    /* UI STYLING */
-    [data-testid="stAppViewContainer"] { background-color: #F9F7F2; }
-    [data-testid="stHeader"] { background-color: #F9F7F2; }
-    h1, h2, h3, h4, h5, h6, p, li, label, .stMarkdown { color: #0C2340 !important; }
+    /* 1. FORCE LIGHT MODE BACKGROUND */
+    [data-testid="stAppViewContainer"] {
+        background-color: #F9F7F2;
+    }
+    [data-testid="stHeader"] {
+        background-color: #F9F7F2; 
+    }
+
+    /* 2. TEXT COLORS */
+    h1, h2, h3, h4, h5, h6, p, li, label, .stMarkdown {
+        color: #0C2340 !important;
+    }
+
+    /* 3. INPUT FIELDS */
     input, textarea, select {
         background-color: #ffffff !important;
         color: #000000 !important;
         border: 1px solid #ccc !important;
+        caret-color: #000000 !important;
     }
-    button { background-color: #0C2340 !important; border: none !important; }
-    button * { color: #ffffff !important; }
-    button:hover { background-color: #BF0A30 !important; }
-    
+    ::placeholder {
+        color: #666666 !important;
+        opacity: 1;
+    }
+
+    /* 4. BUTTONS (Standard Buttons) */
+    button {
+        background-color: #0C2340 !important;
+        border: none !important;
+        transition: background-color 0.3s ease;
+    }
+    button * {
+        color: #ffffff !important;
+    }
+    button:hover {
+        background-color: #BF0A30 !important;
+    }
+
+    /* 5. LINK BUTTONS (Donation Buttons) */
+    [data-testid="stLinkButton"] {
+        background-color: #FFDD00 !important; /* <--- CHANGE BUTTON COLOR HERE */
+        border: none !important;
+        color: #000000 !important;            /* <--- CHANGE TEXT COLOR HERE */
+        text-decoration: none !important;
+        font-weight: 800 !important;          /* Make it bold */
+    }
+    /* Force the text inside to match */
+    [data-testid="stLinkButton"] p {
+        color: #000000 !important;            /* <--- CHANGE TEXT COLOR HERE TOO */
+    }
+    /* Hover effect */
+    [data-testid="stLinkButton"]:hover {
+        background-color: #FFC107 !important; /* A slightly darker shade for hover */
+        color: #000000 !important;
+    }
+    [data-testid="stLinkButton"]:hover p {
+        color: #000000 !important;
+    }
+
+    /* 6. TABS */
+    [data-testid="stTabs"] {
+        background-color: transparent;
+    }
+    [data-testid="stMarkdownContainer"] p {
+        font-weight: bold;
+    }
+
+    /* 7. ARTICLE BOXES */
     .article-box {
         background-color: #ffffff; 
         padding: 20px; 
@@ -147,8 +196,15 @@ st.markdown("""
         border-left: 6px solid #0C2340; 
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    .article-title { color: #0C2340 !important; font-size: 20px; font-weight: 800; }
-    .article-desc { color: #333333 !important; font-size: 16px; }
+    .article-title { 
+        color: #0C2340 !important; 
+        font-size: 20px; 
+        font-weight: 800; 
+    }
+    .article-desc { 
+        color: #333333 !important; 
+        font-size: 16px; 
+    }
     .note-text {
         color: #555555 !important;
         background-color: #eeeeee;
@@ -156,6 +212,7 @@ st.markdown("""
         font-style: italic;
         border-radius: 4px;
     }
+    /* Custom Bill Links */
     a.bill-link {
         color: #ffffff !important;
         background-color: #BF0A30;
@@ -178,49 +235,14 @@ with st.sidebar:
     st.divider()
     
     # --- ADMIN PANEL (Google Sheets Version) ---
-    # with st.expander("Admin Access"):
-    #     if st.button("Check Connection"):
-    #         try:
-    #             conn = st.connection("gsheets", type=GSheetsConnection)
-    #             df = conn.read(worksheet="Sheet1", ttl=0)
-    #             st.success(f"Connected! Total Signatures: {len(df)}")
-    #         except Exception as e:
-    #             st.error(f"Connection Failed: {e}")
     with st.expander("Admin Access"):
-        # 1. Check if the local CSV still exists
-        if os.path.isfile('pledges.csv'):
-            st.info(f"Local CSV found! ({os.path.getsize('pledges.csv')} bytes)")
-            
-            # Button to Migrate Data
-            if st.button("🚀 Move CSV Data to Google Sheets"):
-                try:
-                    # Load Local CSV
-                    csv_df = pd.read_csv('pledges.csv')
-                    st.write(f"Found {len(csv_df)} signatures in CSV.")
-
-                    # Load Google Sheet
-                    conn = st.connection("gsheets", type=GSheetsConnection)
-                    sheet_df = conn.read(worksheet="Sheet1", ttl=0)
-                    
-                    # Combine & Remove Duplicates (based on Email)
-                    combined_df = pd.concat([sheet_df, csv_df], ignore_index=True)
-                    combined_df.drop_duplicates(subset=['Email'], inplace=True)
-                    
-                    # Upload back to Google Sheets
-                    conn.update(worksheet="Sheet1", data=combined_df)
-                    
-                    st.success("✅ Success! All old signatures are now in Google Sheets.")
-                    st.balloons()
-                    
-                except Exception as e:
-                    st.error(f"Migration failed: {e}")
-                    
-            # Download Button (Backup)
-            df_download = pd.read_csv('pledges.csv')
-            st.download_button("📥 Download CSV Backup", df_download.to_csv(index=False), "pledges_backup.csv")
-
-        else:
-            st.warning("No local 'pledges.csv' file found. It may have been deleted during a restart.")
+        if st.button("Check Connection"):
+            try:
+                conn = st.connection("gsheets", type=GSheetsConnection)
+                df = conn.read(worksheet="Sheet1", ttl=0)
+                st.success(f"Connected! Total Signatures: {len(df)}")
+            except Exception as e:
+                st.error(f"Connection Failed: {e}")
 
 # --- MAIN PAGE ---
 
@@ -291,14 +313,13 @@ with tab1:
                     dist, rep = st.session_state.district_info
                     if is_duplicate(email): st.error("❌ Already signed.")
                     else:
-                        # ONLY SHOW BALLOONS IF SAVE RETURNS TRUE
-                        if save_pledge(name, email, dist, rep):
-                            st.balloons()
-                            st.success("✅ NAME CONFIRMED!")
-                            st.link_button("❤️ Donate $5 to help spread the word", DONATION_LINK)
-                            if st.button("Start Over"):
-                                st.session_state.clear()
-                                st.rerun()
+                        save_pledge(name, email, dist, rep)
+                        st.balloons()
+                        st.success("✅ NAME CONFIRMED!")
+                        st.link_button("❤️ Donate $5 to help spread the word", DONATION_LINK)
+                        if st.button("Start Over"):
+                            st.session_state.clear()
+                            st.rerun()
                 else: st.error("Incorrect code.")
 
 with tab2:
