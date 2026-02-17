@@ -95,11 +95,17 @@ def send_email_code(to_email):
         return None
 
 def save_pledge(name, email, district, rep_name):
-    # SAVES DIRECTLY TO GOOGLE SHEETS
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
+        # Force a fresh download
         existing_data = conn.read(worksheet="Sheet1", ttl=0)
         
+        # SAFETY CHECK 1: If read failed/returned nothing, STOP.
+        if existing_data is None:
+            st.error("⚠️ Error reading database. Please try again.")
+            return False
+
+        # Create the new row
         new_row = pd.DataFrame([{
             "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "Name": name,
@@ -108,10 +114,22 @@ def save_pledge(name, email, district, rep_name):
             "Rep": rep_name
         }])
         
+        # Combine
         updated_df = pd.concat([existing_data, new_row], ignore_index=True)
+        
+        # SAFETY CHECK 2: THE "ANTI-WIPE" LOCK
+        # If the new list is shorter than the old list, something is wrong. ABORT.
+        if len(updated_df) < len(existing_data):
+            st.error(f"⚠️ SAFETY LOCK TRIGGERED: Attempted to delete data. (Old: {len(existing_data)}, New: {len(updated_df)})")
+            return False
+            
+        # Upload
         conn.update(worksheet="Sheet1", data=updated_df)
+        return True
+        
     except Exception as e:
-        st.error(f"Error saving to cloud: {e}")
+        st.error(f"⚠️ GOOGLE SHEETS ERROR: {e}")
+        return False
 
 # --- THE APP UI ---
 
@@ -158,25 +176,51 @@ st.markdown("""
         background-color: #BF0A30 !important;
     }
 
-    /* 5. LINK BUTTONS (Donation Buttons) */
+    /* Main Page Buttons (Navy) */
     [data-testid="stLinkButton"] {
-        background-color: #ffffff !important; /* <--- CHANGE BUTTON COLOR HERE */
-        border: none !important;
-        color: #ffffff !important;            /* <--- CHANGE TEXT COLOR HERE */
-        text-decoration: none !important;
-        font-weight: 800 !important;          /* Make it bold */
-    }
-    /* Force the text inside to match */
-    [data-testid="stLinkButton"] p {
-        color: #ffffff !important;            /* <--- CHANGE TEXT COLOR HERE TOO */
-    }
-    /* Hover effect */
-    [data-testid="stLinkButton"]:hover {
-        background-color: #FFC107 !important; /* A slightly darker shade for hover */
+        background-color: #0C2340 !important;
         color: #ffffff !important;
     }
-    [data-testid="stLinkButton"]:hover p {
+    [data-testid="stLinkButton"] p { color: #ffffff !important; }
+
+    /* SIDEBAR ONLY OVERRIDE (Yellow) */
+    [data-testid="stSidebar"] [data-testid="stLinkButton"] {
+        background-color: #FFDD00 !important; /* Bright Yellow */
+        color: #000000 !important;            /* Black Text */
+    }
+    [data-testid="stSidebar"] [data-testid="stLinkButton"] p {
+        color: #000000 !important;            /* Force Black Text */
+    }
+
+    /* --- SIDEBAR THEME --- */
+    
+    /* 1. Make the Sidebar Background Navy Blue */
+    [data-testid="stSidebar"] {
+        background-color: #0C2340 !important;
+    }
+
+    /* 2. Make All Sidebar Text White (Headers & Paragraphs) */
+    [data-testid="stSidebar"] h1, 
+    [data-testid="stSidebar"] h2, 
+    [data-testid="stSidebar"] h3, 
+    [data-testid="stSidebar"] p, 
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] .stMarkdown {
         color: #ffffff !important;
+    }
+
+    /* 3. Sidebar Divider Line (Make it white/light so it shows up) */
+    [data-testid="stSidebar"] hr {
+        border-color: #ffffff !important;
+    }
+    
+    /* 4. Sidebar Buttons (Keep them Yellow/Black for contrast) */
+    [data-testid="stSidebar"] [data-testid="stLinkButton"] {
+        background-color: #FFDD00 !important;
+        color: #000000 !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stLinkButton"] p {
+        color: #000000 !important;
     }
 
     /* 6. TABS */
