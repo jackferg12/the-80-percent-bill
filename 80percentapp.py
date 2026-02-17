@@ -325,7 +325,7 @@ with tab2:
             "https://www.congress.gov/bill/118th-congress/senate-bill/1171", None
         ),
         ("II. End Forever Wars", "Repeal outdated authorizations (AUMFs) to return war powers to Congress.", "https://www.congress.gov/bill/118th-congress/senate-bill/316", None),
-        ("III. Lifetime Lobbying Ban", "Former Members of Congress are banned for life from becoming registered lobbyists.", "https://www.congress.gov/bill/118th-congress/house-bill/384", None),
+        ("III. Lifetime Lobbying Ban", "Former Members of Congress are banned for life from becoming registered lobbyists.", "https://www.congress.gov/bill/118th-congress/house-bill/1601", None),
         ("IV. Tax the Ultra-Wealthy", "Close tax loopholes and establish a minimum tax for billionaires.", "https://www.congress.gov/bill/118th-congress/house-bill/6498", None),
         (
             "V. Ban Corporate PACs", 
@@ -336,7 +336,7 @@ with tab2:
         ("VI. Audit the Pentagon", "The Pentagon has never passed an audit. Require a full, independent audit to root out waste and fraud.", "https://www.congress.gov/bill/118th-congress/house-bill/2961", None),
         (
             "VII. Medicare Drug Negotiation", 
-            "1. H.R. 4895: Expands negotiation to 50 drugs/year and applies lower prices to private insurance.\n2. H.R. 853: Closes the 'Orphan Drug' loophole.", 
+            "1. H.R. 4895: Expands negotiation to 50 drugs/year and applies lower prices to private insurance.\\n2. H.R. 853: Closes the 'Orphan Drug' loophole.", 
             "https://www.congress.gov/bill/118th-congress/house-bill/4895", 
             "Note: This entry combines two bills to protect all Americans (not just seniors) and stop Big Pharma from gaming the 'rare disease' system."
         ),
