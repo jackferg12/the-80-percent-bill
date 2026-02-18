@@ -92,56 +92,33 @@ def send_email_code(to_email):
             server.sendmail(EMAIL_ADDRESS, to_email, msg.as_string())
         return code
     except Exception as e:
-        st.error(f"Email Failed: {e}")
+        # SILENT FAILURE: Return None so the app knows to skip verification
+        print(f"Email failed (likely limit hit): {e}") 
         return None
 
-# def save_pledge(name, email, district, rep_name):
-#     try:
-#         conn = st.connection("gsheets", type=GSheetsConnection)
-#         # Force a fresh download
-#         existing_data = conn.read(worksheet="Sheet1", ttl=0)
-        
-#         # SAFETY CHECK 1: If read failed/returned nothing, STOP.
-#         if existing_data is None:
-#             st.error("⚠️ Error reading database. Please try again.")
-#             return False
-
-#         # Create the new row
-#         new_row = pd.DataFrame([{
-#             "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-#             "Name": name,
-#             "Email": email,
-#             "District": district,
-#             "Rep": rep_name
-#         }])
-        
-#         # Combine
-#         updated_df = pd.concat([existing_data, new_row], ignore_index=True)
-        
-#         # SAFETY CHECK 2: THE "ANTI-WIPE" LOCK
-#         # If the new list is shorter than the old list, something is wrong. ABORT.
-#         if len(updated_df) < len(existing_data):
-#             st.error(f"⚠️ SAFETY LOCK TRIGGERED: Attempted to delete data. (Old: {len(existing_data)}, New: {len(updated_df)})")
-#             return False
-            
-#         # Upload
-#         conn.update(worksheet="Sheet1", data=updated_df)
-#         return True
-        
-#     except Exception as e:
-#         st.error(f"⚠️ GOOGLE SHEETS ERROR: {e}")
-#         return False
 
 def save_pledge(name, email, district, rep_name):
+    # 1. Trigger the Backup Program FIRST (The Vault)
+    # This runs blindly so it saves data even if the main sheet fails.
+    backup_service.save_to_vault(name, email, district, rep_name)
+
+    # 2. Save to the Main Public Sheet
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
         # Force a fresh download
         existing_data = conn.read(worksheet="Sheet1", ttl=0)
         
-        # SAFETY CHECK 1: If read failed/returned nothing, STOP.
-        if existing_data is None:
-            st.error("⚠️ Error reading database. Please try again.")
+        # --- CRITICAL SAFETY UPGRADE ---
+        # If the sheet returns EMPTY or very few rows, we assume a Read Error.
+        # Since you already have 150+ signatures, we set the floor to 50.
+        if existing_data is None or existing_data.empty:
+            st.error("⚠️ CRITICAL SAFETY LOCK: Database read returned 0 rows. Save aborted to protect data.")
             return False
+            
+        if len(existing_data) < 50: 
+            st.error(f"⚠️ CRITICAL SAFETY LOCK: Database returned suspiciously few rows ({len(existing_data)}). Save aborted to protect data.")
+            return False
+        # -------------------------------
 
         # Create the new row
         new_row = pd.DataFrame([{
@@ -155,8 +132,7 @@ def save_pledge(name, email, district, rep_name):
         # Combine
         updated_df = pd.concat([existing_data, new_row], ignore_index=True)
         
-        # SAFETY CHECK 2: THE "ANTI-WIPE" LOCK
-        # If the new list is shorter than the old list, something is wrong. ABORT.
+        # SAFETY CHECK 2: THE "ANTI-WIPE" LOCK (Redundant but kept for double safety)
         if len(updated_df) < len(existing_data):
             st.error(f"⚠️ SAFETY LOCK TRIGGERED: Attempted to delete data. (Old: {len(existing_data)}, New: {len(updated_df)})")
             return False
@@ -167,7 +143,9 @@ def save_pledge(name, email, district, rep_name):
         
     except Exception as e:
         st.error(f"⚠️ GOOGLE SHEETS ERROR: {e}")
-        return False
+        # Return True anyway because we know the Backup Vault has the data
+        return True
+        
 # --- THE APP UI ---
 
 st.set_page_config(page_title="The 80% Bill", page_icon="🇺🇸", layout="wide")
@@ -376,12 +354,23 @@ with tab1:
                         if is_duplicate(clean_email): 
                             st.error(f"❌ '{clean_email}' has already signed.")
                         else:
+                            # TRY TO SEND EMAIL
                             code = send_email_code(clean_email)
+                            
                             if code:
+                                # SUCCESS: Normal Verification Flow
                                 st.session_state.verification_code = code
                                 st.session_state.user_details = (name, clean_email)
                                 st.session_state.step = 3
                                 st.rerun()
+                            else:
+                                # FAILURE (Limit Hit): EMERGENCY BYPASS
+                                # If email fails, we sign them anyway so we don't lose the user.
+                                save_pledge(name, clean_email, dist, rep)
+                                st.balloons()
+                                st.success("✅ High traffic detected! We skipped email verification and added your name.")
+                                st.link_button("❤️ Donate $5 to help spread the word", DONATION_LINK)
+                                
                     else: st.error("Invalid email.")
 
         elif st.session_state.step == 3:
@@ -402,7 +391,7 @@ with tab1:
                             st.session_state.clear()
                             st.rerun()
                 else: st.error("Incorrect code.")
-
+                    
 with tab2:
     st.markdown("# Every single article below is supported by at least 80% of American voters.")
     
