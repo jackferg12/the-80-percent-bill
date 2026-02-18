@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 import random
 import os
+import backup_service
 import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime
@@ -94,6 +95,43 @@ def send_email_code(to_email):
         st.error(f"Email Failed: {e}")
         return None
 
+# def save_pledge(name, email, district, rep_name):
+#     try:
+#         conn = st.connection("gsheets", type=GSheetsConnection)
+#         # Force a fresh download
+#         existing_data = conn.read(worksheet="Sheet1", ttl=0)
+        
+#         # SAFETY CHECK 1: If read failed/returned nothing, STOP.
+#         if existing_data is None:
+#             st.error("⚠️ Error reading database. Please try again.")
+#             return False
+
+#         # Create the new row
+#         new_row = pd.DataFrame([{
+#             "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+#             "Name": name,
+#             "Email": email,
+#             "District": district,
+#             "Rep": rep_name
+#         }])
+        
+#         # Combine
+#         updated_df = pd.concat([existing_data, new_row], ignore_index=True)
+        
+#         # SAFETY CHECK 2: THE "ANTI-WIPE" LOCK
+#         # If the new list is shorter than the old list, something is wrong. ABORT.
+#         if len(updated_df) < len(existing_data):
+#             st.error(f"⚠️ SAFETY LOCK TRIGGERED: Attempted to delete data. (Old: {len(existing_data)}, New: {len(updated_df)})")
+#             return False
+            
+#         # Upload
+#         conn.update(worksheet="Sheet1", data=updated_df)
+#         return True
+        
+#     except Exception as e:
+#         st.error(f"⚠️ GOOGLE SHEETS ERROR: {e}")
+#         return False
+
 def save_pledge(name, email, district, rep_name):
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
@@ -130,7 +168,6 @@ def save_pledge(name, email, district, rep_name):
     except Exception as e:
         st.error(f"⚠️ GOOGLE SHEETS ERROR: {e}")
         return False
-
 # --- THE APP UI ---
 
 st.set_page_config(page_title="The 80% Bill", page_icon="🇺🇸", layout="wide")
