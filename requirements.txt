@@ -2,3 +2,4 @@ streamlit
 pandas
 requests
 st-gsheets-connection
+streamlit-searchbox

@@ -4,8 +4,11 @@ from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 
 def save_to_vault(name, email, district, rep_name):
+    vault_url = st.secrets.get("BACKUP_URL")
+    if not vault_url:
+        print("⚠️ BACKUP_URL not set in secrets - skipping backup")
+        return False
     try:
-        vault_url = st.secrets["BACKUP_URL"]
         conn = st.connection("gsheets", type=GSheetsConnection)
         existing_data = conn.read(spreadsheet=vault_url, worksheet="Sheet1", ttl=0)
         
