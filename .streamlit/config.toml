@@ -1,6 +1,7 @@
 [client]
 # "minimal" hides the toolbar/menu when no options remain
 toolbarMode = "minimal"
+showSidebarNavigation = false
 
 [theme]
 primaryColor = "#C41E3A"
