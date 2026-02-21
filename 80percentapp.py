@@ -2,6 +2,7 @@
 import streamlit as st
 import requests
 import pandas as pd
+from streamlit_searchbox import st_searchbox
 import random
 import os
 import backup_service
@@ -28,21 +29,26 @@ def find_image(options):
 LOGO_IMG = find_image(["Gemini_Generated_Image_1dkkh41dkkh41dkk.jpg", "logo.jpg", "logo.png"])
 
 # --- HELPER FUNCTIONS ---
+@st.cache_data(ttl=300)
 def get_osm_addresses(search_term):
-    if not search_term: return []
+    """Fetch up to 6 address suggestions from OpenStreetMap Nominatim for US addresses."""
+    if not search_term or len(search_term.strip()) < 3:
+        return []
     url = "https://nominatim.openstreetmap.org/search"
     headers = {"User-Agent": "The80PercentPledge/1.0"}
-    params = {"q": search_term, "format": "json", "limit": 5, "countrycodes": "us", "addressdetails": 1}
+    params = {"q": search_term, "format": "json", "limit": 6, "countrycodes": "us", "addressdetails": 1}
     try:
         response = requests.get(url, params=params, headers=headers)
         if response.status_code == 200:
             return response.json()
-    except:
+    except Exception:
         return []
     return []
 
 def get_district(address):
-    if not address: return None, None
+    """Use Geocodio API to convert address to congressional district and representative."""
+    if not address:
+        return None, None
     url = "https://api.geocod.io/v1.7/geocode"
     params = {"q": address, "fields": "cd", "api_key": GEOCODIO_API_KEY}
     try:
@@ -51,20 +57,22 @@ def get_district(address):
             results = response.json().get('results', [])
             if results:
                 data = results[0]
-                if 'congressional_districts' in data['fields']:
-                    dist_data = data['fields']['congressional_districts'][0]
-                    state = data['address_components']['state']
-                    dist_num = dist_data['district_number']
-                    legislators = dist_data.get('current_legislators', [])
-                    rep_name = "Vacant"
-                    for leg in legislators:
-                        if leg['type'] == 'representative':
-                            rep = leg['bio']
-                            rep_name = f"{rep['first_name']} {rep['last_name']}"
-                            break
-                    return f"{state}-{dist_num}", rep_name
-    except:
-        return None, None
+                fields = data.get('fields', {})
+                if 'congressional_districts' in fields:
+                    dist_data = fields['congressional_districts'][0]
+                    state = data.get('address_components', {}).get('state', '')
+                    dist_num = dist_data.get('district_number')
+                    if state is not None and dist_num is not None:
+                        legislators = dist_data.get('current_legislators', [])
+                        rep_name = "Vacant"
+                        for leg in legislators:
+                            if leg.get('type') == 'representative':
+                                rep = leg.get('bio', {})
+                                rep_name = f"{rep.get('first_name', '')} {rep.get('last_name', '')}".strip()
+                                break
+                        return f"{state}-{dist_num}", rep_name
+    except Exception:
+        pass
     return None, None
 
 def is_duplicate(email):
@@ -108,15 +116,10 @@ def save_pledge(name, email, district, rep_name):
         # Force a fresh download
         existing_data = conn.read(worksheet="Sheet1", ttl=0)
         
-        # --- CRITICAL SAFETY UPGRADE ---
-        # If the sheet returns EMPTY or very few rows, we assume a Read Error.
-        # Since you already have 150+ signatures, we set the floor to 50.
+        # --- CRITICAL SAFETY ---
+        # Abort only if sheet is empty (read error) - allow saves with any non-empty data
         if existing_data is None or existing_data.empty:
             st.error("⚠️ CRITICAL SAFETY LOCK: Database read returned 0 rows. Save aborted to protect data.")
-            return False
-            
-        if len(existing_data) < 50: 
-            st.error(f"⚠️ CRITICAL SAFETY LOCK: Database returned suspiciously few rows ({len(existing_data)}). Save aborted to protect data.")
             return False
         # -------------------------------
 
@@ -142,155 +145,349 @@ def save_pledge(name, email, district, rep_name):
         return True
         
     except Exception as e:
-        st.error(f"⚠️ GOOGLE SHEETS ERROR: {e}")
-        # Return True anyway because we know the Backup Vault has the data
-        return True
+        err_msg = str(e).lower()
+        if "permission" in err_msg or "403" in err_msg or "credentials" in err_msg or "unauthorized" in err_msg:
+            st.error(
+                "⚠️ Google Sheets write failed (likely read-only connection). "
+                "To save pledges, use Service Account auth—see SECRETS_SETUP.md"
+            )
+        else:
+            st.error(f"⚠️ GOOGLE SHEETS ERROR: {e}")
+        return False
         
 # --- THE APP UI ---
 
-st.set_page_config(page_title="The 80% Bill", page_icon="🇺🇸", layout="wide")
+st.set_page_config(
+    page_title="The 80% Bill",
+    page_icon="🇺🇸",
+    layout="wide",
+    initial_sidebar_state="auto",
+    menu_items={"Get Help": None, "Report a bug": None, "About": None},
+)
 
-# --- CUSTOM THEME (FRESH START) ---
+# --- CUSTOM THEME: White background, Blue primary, Red accents ---
 st.markdown("""
 <style>
-    /* 1. FORCE LIGHT MODE BACKGROUND */
+    /* === DESIGN TOKENS === */
+    :root {
+        --blue-primary: #1E3A5F;
+        --blue-hover: #2c5282;
+        --red-accent: #C41E3A;
+        --red-hover: #a01830;
+        --white: #FFFFFF;
+        --gray-light: #F7F8FA;
+        --gray-text: #4A5568;
+        --gray-border: #E2E8F0;
+    }
+
+    /* === GLOBAL: White Background === */
     [data-testid="stAppViewContainer"] {
-        background-color: #F9F7F2;
+        background-color: var(--white) !important;
     }
     [data-testid="stHeader"] {
-        background-color: #F9F7F2; 
+        background-color: var(--white) !important;
+        border-bottom: 1px solid var(--gray-border);
+    }
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+        max-width: 900px;
     }
 
-    /* 2. TEXT COLORS */
-    h1, h2, h3, h4, h5, h6, p, li, label, .stMarkdown {
-        color: #0C2340 !important;
+    /* === TYPOGRAPHY: Blue for headings === */
+    h1, h2, h3, h4 {
+        color: var(--blue-primary) !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.02em;
+    }
+    h1 { font-size: 2.25rem !important; margin-bottom: 0.5rem !important; }
+    h2 { font-size: 1.5rem !important; }
+    h3 { font-size: 1.25rem !important; }
+    p, li, label, .stMarkdown {
+        color: var(--gray-text) !important;
+        font-weight: 500 !important;
+    }
+    strong, b {
+        font-size: 1.1em !important;
+        font-weight: 700 !important;
     }
 
-    /* 3. INPUT FIELDS */
-    input, textarea, select {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        border: 1px solid #ccc !important;
-        caret-color: #000000 !important;
+    /* === INPUT FIELDS === */
+    /* Single 1px border - avoid double-border effect from nested elements */
+    [data-testid="stTextInput"] input,
+    [data-testid="stTextInput"] textarea,
+    input[type="text"],
+    input[type="email"],
+    textarea {
+        background-color: var(--white) !important;
+        border: 1px solid var(--gray-border) !important;
+        border-radius: 8px !important;
+        padding: 0.6rem 1rem !important;
+        font-size: 1rem !important;
     }
-    ::placeholder {
-        color: #666666 !important;
-        opacity: 1;
-    }
-
-    /* 4. BUTTONS (Standard Buttons) */
-    button {
-        background-color: #0C2340 !important;
+    /* Suppress outer border/outline on Streamlit input containers */
+    [data-testid="stTextInput"] > div {
         border: none !important;
-        transition: background-color 0.3s ease;
+        box-shadow: none !important;
     }
-    button * {
-        color: #ffffff !important;
+    input:focus, textarea:focus {
+        border-color: var(--red-accent) !important;
+        box-shadow: 0 0 0 2px rgba(196, 30, 58, 0.12) !important;
+        outline: none !important;
     }
-    button:hover {
-        background-color: #BF0A30 !important;
-    }
+    ::placeholder { color: #94A3B8 !important; }
 
-    /* Main Page Buttons (Navy) */
+    /* === PRIMARY BUTTONS: Blue with Red hover === */
+    .stButton > button {
+        background-color: var(--blue-primary) !important;
+        color: var(--white) !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 0.75rem 1.5rem !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+        min-height: 44px !important;  /* Touch-friendly on mobile */
+        transition: all 0.2s ease !important;
+    }
+    .stButton > button:hover {
+        background-color: var(--red-accent) !important;
+        transform: translateY(-1px);
+    }
+    .stButton > button * { color: var(--white) !important; }
+
+    /* === LINK BUTTONS (main content - donation, etc.) === */
     [data-testid="stLinkButton"] {
-        background-color: #0C2340 !important;
-        color: #ffffff !important;
+        background-color: var(--red-accent) !important;
+        color: var(--white) !important;
+        border-radius: 8px !important;
+        padding: 0.75rem 1.5rem !important;
+        font-weight: 600 !important;
+        transition: all 0.2s ease !important;
     }
-    [data-testid="stLinkButton"] p { color: #ffffff !important; }
+    [data-testid="stLinkButton"]:hover {
+        background-color: var(--red-hover) !important;
+    }
+    [data-testid="stLinkButton"] p,
+    [data-testid="stLinkButton"] a,
+    [data-testid="stLinkButton"] span,
+    [data-testid="stLinkButton"] * {
+        color: var(--white) !important;
+    }
 
-    /* SIDEBAR ONLY OVERRIDE (Yellow) */
-    [data-testid="stSidebar"] [data-testid="stLinkButton"] {
-        background-color: #FFDD00 !important; /* Bright Yellow */
-        color: #000000 !important;            /* Black Text */
-    }
-    [data-testid="stSidebar"] [data-testid="stLinkButton"] p {
-        color: #000000 !important;            /* Force Black Text */
-    }
-
-    /* --- SIDEBAR THEME --- */
-    
-    /* 1. Make the Sidebar Background Navy Blue */
+    /* === SIDEBAR: Blue with red accent button === */
     [data-testid="stSidebar"] {
-        background-color: #0C2340 !important;
+        background: linear-gradient(180deg, var(--blue-primary) 0%, #152a47 100%) !important;
     }
-
-    /* 2. Make All Sidebar Text White (Headers & Paragraphs) */
-    [data-testid="stSidebar"] h1, 
-    [data-testid="stSidebar"] h2, 
-    [data-testid="stSidebar"] h3, 
-    [data-testid="stSidebar"] p, 
-    [data-testid="stSidebar"] label,
-    [data-testid="stSidebar"] .stMarkdown {
-        color: #ffffff !important;
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, 
+    [data-testid="stSidebar"] h3, [data-testid="stSidebar"] p, 
+    [data-testid="stSidebar"] label, [data-testid="stSidebar"] .stMarkdown {
+        color: var(--white) !important;
     }
-
-    /* 3. Sidebar Divider Line (Make it white/light so it shows up) */
-    [data-testid="stSidebar"] hr {
-        border-color: #ffffff !important;
-    }
-    
-    /* 4. Sidebar Buttons (Keep them Yellow/Black for contrast) */
+    [data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.3) !important; }
+    /* Sidebar donation button - ensure text is always visible */
     [data-testid="stSidebar"] [data-testid="stLinkButton"] {
-        background-color: #FFDD00 !important;
-        color: #000000 !important;
+        background-color: var(--red-accent) !important;
+        color: var(--white) !important;
+        border: 2px solid rgba(255,255,255,0.3) !important;
     }
-    [data-testid="stSidebar"] [data-testid="stLinkButton"] p {
-        color: #000000 !important;
+    [data-testid="stSidebar"] [data-testid="stLinkButton"]:hover,
+    [data-testid="stSidebar"] [data-testid="stLinkButton"]:focus {
+        background-color: var(--red-hover) !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stLinkButton"] p,
+    [data-testid="stSidebar"] [data-testid="stLinkButton"] a,
+    [data-testid="stSidebar"] [data-testid="stLinkButton"] span,
+    [data-testid="stSidebar"] [data-testid="stLinkButton"] * {
+        color: var(--white) !important;
+    }
+    /* Admin expander: ensure text has contrast on blue sidebar */
+    [data-testid="stSidebar"] [data-testid="stExpander"],
+    [data-testid="stSidebar"] details,
+    [data-testid="stSidebar"] [data-baseweb="expansion-panel"] {
+        background-color: rgba(255,255,255,0.08) !important;
+        border-color: rgba(255,255,255,0.3) !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stExpander"] p,
+    [data-testid="stSidebar"] [data-testid="stExpander"] label,
+    [data-testid="stSidebar"] [data-testid="stExpander"] .stMarkdown,
+    [data-testid="stSidebar"] [data-testid="stExpander"] button,
+    [data-testid="stSidebar"] [data-testid="stExpander"] button *,
+    [data-testid="stSidebar"] details p,
+    [data-testid="stSidebar"] details label,
+    [data-testid="stSidebar"] details .stMarkdown,
+    [data-testid="stSidebar"] details button,
+    [data-testid="stSidebar"] details button *,
+    [data-testid="stSidebar"] [data-testid="stExpander"] summary,
+    [data-testid="stSidebar"] details summary,
+    [data-testid="stSidebar"] [data-baseweb="expansion-panel"] * {
+        color: var(--white) !important;
     }
 
-    /* 6. TABS */
-    [data-testid="stTabs"] {
-        background-color: transparent;
+    /* === TABS === */
+    [data-testid="stTabs"] [data-baseweb="tab-list"] {
+        gap: 0;
+        background-color: var(--gray-light);
+        border-radius: 10px;
+        padding: 4px;
     }
-    [data-testid="stMarkdownContainer"] p {
-        font-weight: bold;
+    [data-testid="stTabs"] [data-baseweb="tab"] {
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+    }
+    [data-testid="stTabs"] [aria-selected="true"] {
+        background-color: var(--blue-primary) !important;
+        color: var(--white) !important;
+    }
+    /* Force white text on selected tab (child elements often override parent color) */
+    [data-testid="stTabs"] [aria-selected="true"] * {
+        color: var(--white) !important;
+    }
+    [data-testid="stTabs"] [aria-selected="false"] {
+        color: var(--gray-text) !important;
     }
 
-    /* 7. ARTICLE BOXES */
+    /* === FORM CARD: Clean container === */
+    .pledge-card {
+        background: var(--white);
+        border: 2px solid var(--gray-border);
+        border-radius: 16px;
+        padding: 2rem;
+        margin: 1.5rem 0;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
+    }
+
+    /* === ARTICLE BOXES === */
     .article-box {
-        background-color: #ffffff; 
-        padding: 20px; 
-        border-radius: 8px; 
-        margin-bottom: 20px;
-        border-left: 6px solid #0C2340; 
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        background: var(--white);
+        border: 2px solid var(--gray-border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        border-left: 5px solid var(--blue-primary);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .article-title { 
-        color: #0C2340 !important; 
-        font-size: 20px; 
-        font-weight: 800; 
+    .article-box:hover {
+        border-left-color: var(--red-accent);
+        box-shadow: 0 4px 12px rgba(30, 58, 95, 0.08);
     }
-    .article-desc { 
-        color: #333333 !important; 
-        font-size: 16px; 
+    .article-title {
+        color: var(--blue-primary) !important;
+        font-size: 1.125rem !important;
+        font-weight: 700 !important;
+        margin-bottom: 0.5rem !important;
+    }
+    .article-desc {
+        color: var(--gray-text) !important;
+        font-size: 0.95rem !important;
+        line-height: 1.5 !important;
     }
     .note-text {
-        color: #555555 !important;
-        background-color: #eeeeee;
-        padding: 8px;
+        color: var(--gray-text) !important;
+        background-color: var(--gray-light);
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem !important;
         font-style: italic;
-        border-radius: 4px;
+        border-radius: 8px;
+        margin-top: 0.75rem;
     }
-    /* Custom Bill Links */
     a.bill-link {
-        color: #ffffff !important;
-        background-color: #BF0A30;
-        padding: 8px 16px;
-        border-radius: 4px;
-        text-decoration: none;
         display: inline-block;
-        margin-top: 10px;
+        margin-top: 1rem;
+        padding: 0.5rem 1rem;
+        background-color: var(--red-accent);
+        color: var(--white) !important;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: background-color 0.2s;
+    }
+    a.bill-link:hover {
+        background-color: var(--red-hover);
+        color: var(--white) !important;
+    }
+    /* Success screen donate button - always visible (red bg, white text) */
+    a.donate-success-btn {
+        display: inline-block;
+        background-color: var(--red-accent) !important;
+        color: var(--white) !important;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        text-decoration: none !important;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: background-color 0.2s;
+    }
+    a.donate-success-btn:hover {
+        background-color: var(--red-hover) !important;
+        color: var(--white) !important;
+    }
+
+    /* === CAPTION / HINTS === */
+    [data-testid="stCaptionContainer"] {
+        color: var(--gray-text) !important;
+        font-size: 0.9rem !important;
+    }
+
+    /* === FORM CARD STYLING === */
+    [data-testid="stForm"] {
+        background: var(--white);
+        border: 2px solid var(--gray-border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    /* === ALERTS: Softer styling === */
+    [data-testid="stAlert"] {
+        border-radius: 10px;
+        border-left-width: 4px !important;
+    }
+
+    /* === MOBILE RESPONSIVE === */
+    @media (max-width: 768px) {
+        .main .block-container {
+            padding: 1rem 1rem 2rem;
+            max-width: 100%;
+        }
+        h1 { font-size: 1.75rem !important; }
+        h2 { font-size: 1.25rem !important; }
+        .pledge-card { padding: 1.25rem; }
+        [data-testid="stTabs"] [data-baseweb="tab"] {
+            padding: 0.6rem 1rem;
+            font-size: 0.9rem;
+        }
+        .article-box {
+            padding: 1rem;
+        }
+        .article-title { font-size: 1rem !important; }
+        .stButton > button {
+            width: 100% !important;
+            min-height: 48px !important;
+        }
+        [data-testid="column"] {
+            min-width: 100% !important;
+            flex: 1 1 100% !important;
+        }
+    }
+
+    /* === TABLET === */
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .main .block-container { max-width: 700px; }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # --- SIDEBAR ---
 with st.sidebar:
-    if LOGO_IMG: st.image(LOGO_IMG, use_container_width=True)
+    if LOGO_IMG: st.image(LOGO_IMG, width="stretch")
     else: st.header("🇺🇸 The 80% Bill")
     st.divider()
     st.header("Support the Project")
-    st.link_button("☕ Buy me a Coffee ($5)", DONATION_LINK)
+    st.link_button("☕ Buy me a Coffee ($5)", DONATION_LINK, type="primary", width="stretch")
     st.divider()
     
     # --- ADMIN PANEL (Google Sheets Version) ---
@@ -306,36 +503,92 @@ with st.sidebar:
 # --- MAIN PAGE ---
 
 st.title("The 80% Bill")
-st.markdown(" ")
+st.markdown(
+    '<p style="color: #4A5568; font-size: 1.1rem; margin-top: -0.5rem;">20 bills that 80%+ of Americans support. Sign the pledge.</p>',
+    unsafe_allow_html=True,
+)
+st.markdown("---")
 
-tab1, tab2 = st.tabs(["Add Your Name", "Read the Bill"])
+tab1, tab2 = st.tabs(["✍️ Add Your Name", "📖 Read the Bill"])
 
 with tab1:
     if 'step' not in st.session_state: st.session_state.step = 1
 
-    st.warning("By completing this form I am stating that I will not vote for anyone who does not actively support this bill.")
-    
+    st.info("**Pledge:** By completing this form, I state that I will not vote for anyone who does not actively support this bill.")
+
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        # --- STEP 1: MANUAL ENTRY ONLY ---
+        # --- STEP 1: DISTRICT ENTRY (Manual or Address Lookup) ---
         if st.session_state.step == 1:
             st.subheader("Step 1: Enter your District")
-            st.info("Please enter your Congressional District and Representative's name. (If you don't know you can just google your address)")
             
-            # Pre-fill if they go back
-            def_dist = st.session_state.district_info[0] if 'district_info' in st.session_state else ""
-            def_rep = st.session_state.district_info[1] if 'district_info' in st.session_state else ""
+            # Address lookup - updates live as you type (debounced), click address to populate fields
+            st.markdown("**Enter your address to look up this info:**")
 
-            manual_dist = st.text_input("District Code:", value=def_dist, placeholder="e.g. NY-14")
-            manual_rep = st.text_input("Representative Name:", value=def_rep, placeholder="e.g. Alexandria Ocasio-Cortez")
-            
-            if st.button("Continue to Sign"):
+            def address_search(searchterm: str):
+                """Returns up to 6 address suggestions - called as user types (debounced)."""
+                return [
+                    r.get("display_name")
+                    for r in get_osm_addresses(searchterm)
+                    if r.get("display_name")
+                ][:6]
+
+            def on_address_select(selected_address):
+                """When user clicks an address: populate district/rep fields only (stay on same page)."""
+                if selected_address:
+                    district, rep = get_district(selected_address)
+                    if district and rep:
+                        st.session_state.district_info = (district, rep)
+                        st.session_state.district_input = district
+                        st.session_state.rep_input = rep
+                        st.session_state.address_just_populated = True
+                        if "address_lookup_error" in st.session_state:
+                            del st.session_state["address_lookup_error"]
+                        st.rerun()
+                    else:
+                        st.session_state.address_lookup_error = "Could not find congressional district."
+
+            st_searchbox(
+                address_search,
+                key="address_searchbox",
+                placeholder="Type to search (addresses appear below as you type)",
+                debounce=600,
+                clear_on_submit=False,
+                submit_function=on_address_select,
+            )
+            if st.session_state.get("address_lookup_error"):
+                st.error(st.session_state["address_lookup_error"])
+                del st.session_state["address_lookup_error"]
+
+            if st.session_state.get("address_just_populated"):
+                st.success("✓ **Filled in!** Verify your district and representative below, then click **Continue to Sign**.")
+                del st.session_state["address_just_populated"]
+
+            st.markdown("---")
+            st.markdown("**Or enter manually:**")
+            # Initialize from district_info only when keys don't exist (e.g. first load or return from step 2)
+            if "district_input" not in st.session_state:
+                st.session_state.district_input = st.session_state.district_info[0] if "district_info" in st.session_state else ""
+            if "rep_input" not in st.session_state:
+                st.session_state.rep_input = st.session_state.district_info[1] if "district_info" in st.session_state else ""
+            manual_dist = st.text_input(
+                "District Code:",
+                placeholder="e.g. NY-14",
+                key="district_input",
+            )
+            manual_rep = st.text_input(
+                "Representative Name:",
+                placeholder="e.g. Alexandria Ocasio-Cortez",
+                key="rep_input",
+            )
+
+            if st.button("Continue to Sign", key="continue_manual"):
                 if manual_dist and manual_rep:
                     st.session_state.district_info = (manual_dist, manual_rep)
                     st.session_state.step = 2
                     st.rerun()
                 else:
-                    st.error("Please fill in both fields.")
+                    st.error("Please fill in both District Code and Representative Name.")
 
         # --- STEP 2: ENTER INFO & SAVE (NO EMAIL CODE) ---
         elif st.session_state.step == 2:
@@ -370,15 +623,22 @@ with tab1:
         # --- STEP 3: SUCCESS SCREEN ---
         elif st.session_state.step == 3:
             st.balloons()
-            st.success("✅ NAME CONFIRMED! You have signed the pledge.")
-            st.link_button("❤️ Donate $5 to help spread the word", DONATION_LINK)
-            
+            st.success("**Thank you!** Your name has been added to the pledge.")
+            st.markdown("")
+            st.markdown(
+                f'<a href="{DONATION_LINK}" target="_blank" rel="noopener noreferrer" class="donate-success-btn">❤️ Donate $5 to help spread the word</a>',
+                unsafe_allow_html=True,
+            )
+            st.markdown("")
             if st.button("Sign Another Person"):
                 st.session_state.clear()
                 st.rerun()
                     
 with tab2:
-    st.markdown("# Every single article below is supported by at least 80% of American voters.")
+    st.markdown(
+        "### Every article below is supported by at least 80% of American voters.\n\n"
+        "Browse the bills, read the details, and click through to Congress.gov for the full legislation."
+    )
     
 # FORMAT: (Title, Description, Link, Optional_Note)
     articles = [
