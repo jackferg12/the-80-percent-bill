@@ -1,0 +1,10 @@
+[client]
+# "minimal" hides the toolbar/menu when no options remain
+toolbarMode = "minimal"
+
+[theme]
+primaryColor = "#C41E3A"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F7F8FA"
+textColor = "#4A5568"
+font = "sans serif"
